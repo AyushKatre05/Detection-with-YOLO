@@ -1,0 +1,6 @@
+path: C:/Users/ayush/OneDrive/Desktop/detection
+train: images/train
+val: images/train
+
+names:
+ 0: WasteProducts
