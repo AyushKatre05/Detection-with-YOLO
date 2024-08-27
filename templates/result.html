@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detection Result</title>
+</head>
+<body>
+    <h1>Detection Result</h1>
+    <img src="{{ url_for('static', filename='output.jpg') }}" alt="Processed Image">
+    <p>Area of waste detected: {{ area }} unit sq</p>
+    <p>Percentage of waste detected: {{ percentage_waste }}%</p>
+    <a href="{{ url_for('index') }}">Upload another image</a>
+</body>
+</html>
