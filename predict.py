@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+import streamlit as st
 import cv2
 import numpy as np
 from PIL import Image
@@ -6,64 +6,60 @@ import torch
 from ultralytics import YOLO
 import os
 
-app = Flask(__name__)
-
-# Load YOLO model
+# Load YOLO model once at the start
 model_path = os.path.join("models", "last.pt")
-model = YOLO(model_path)
 
-# Define function to calculate area of a bounding box
-def area_calc(x1, y1, x2, y2):
-    length = abs(x1 - x2)
-    width = abs(y1 - y2)
-    return length * width
+# Check if the model path exists
+if not os.path.exists(model_path):
+    st.error(f"Model file not found at {model_path}")
+    st.stop()
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+try:
+    model = YOLO(model_path)
+except Exception as e:
+    st.error(f"Failed to load model: {str(e)}")
+    st.stop()
 
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files:
-        return redirect(url_for('index'))
+# Function to calculate area of a bounding box
+def calculate_area(box):
+    x1, y1, x2, y2 = box[:4]
+    return abs(x2 - x1) * abs(y2 - y1)
 
-    file = request.files['file']
-    if file.filename == '':
-        return redirect(url_for('index'))
+st.title("Waste Detection with YOLO")
 
-    if file:
+uploaded_file = st.file_uploader("Choose an image file", type=["jpg", "jpeg", "png"])
+
+if uploaded_file is not None:
+    try:
         # Read image and convert to numpy array
-        image = Image.open(file)
-        image = np.array(image)
+        image = Image.open(uploaded_file)
+        image_np = np.array(image)
 
-        # Preprocess image
-        r_img = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        r_img = cv2.resize(r_img, (640, 640))
+        # Convert image to BGR for OpenCV
+        image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
+        resized_img = cv2.resize(image_bgr, (640, 640))
 
         # Perform detection
-        results = model(r_img)
-        area = 0
+        results = model(resized_img)
 
+        total_area = 0
         for result in results:
             boxes = result.boxes
-            boxes_list = boxes.data.tolist()
-            for o in boxes_list:
-                x1, y1, x2, y2, score, class_id = o
-                pred_img = cv2.rectangle(r_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-                x = area_calc(x1, y1, x2, y2)
-                area += x
+            for box in boxes.data:
+                x1, y1, x2, y2, score, class_id = box.tolist()
+                total_area += calculate_area((x1, y1, x2, y2))
+                cv2.rectangle(resized_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
 
         # Calculate percentage of waste detected
         image_area = 640 * 640
-        percentage_waste = round((area / image_area) * 100)
+        percentage_waste = round((total_area / image_area) * 100, 2)
 
-        # Save the processed image for display
-        output_image_path = os.path.join('static', 'output.jpg')
-        cv2.imwrite(output_image_path, pred_img)
+        # Convert processed image to display in Streamlit
+        output_image = Image.fromarray(cv2.cvtColor(resized_img, cv2.COLOR_BGR2RGB))
 
-        return render_template('result.html', area=area, percentage_waste=percentage_waste, output_image=output_image_path)
+        st.image(output_image, caption='Processed Image', use_column_width=True)
+        st.write(f"Total Area of Waste Detected: {total_area} pixels")
+        st.write(f"Percentage of Waste Detected: {percentage_waste}%")
 
-    return redirect(url_for('index'))
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    except Exception as e:
+        st.error(f"Error processing image: {str(e)}")
