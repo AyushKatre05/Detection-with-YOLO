@@ -1,4 +1,6 @@
-numpy 
+Flask
+opencv-python
+numpy
+pillow
+torch
 ultralytics
-Pillow
-flask
