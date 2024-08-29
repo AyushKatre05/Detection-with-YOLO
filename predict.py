@@ -1,78 +1,125 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file
+import streamlit as st
 import cv2
+from ultralytics import YOLO
 import numpy as np
 from PIL import Image
-import torch
-from ultralytics import YOLO
+import tempfile
 import os
+import logging
+import time
 
-app = Flask(__name__)
+# Suppress warnings and logging from the YOLO model
+logging.getLogger('ultralytics').setLevel(logging.ERROR)
 
-# Load YOLO model once at the start
-model_path = os.path.join("models", "last.pt")
+# Define the model path
+model_path = "C:/Users/ayush/OneDrive/Desktop/detection/runs/detect/train/weights/last.pt"
+model = YOLO(model_path)
 
-# Check if the model path exists
-if not os.path.exists(model_path):
-    raise FileNotFoundError(f"Model file not found at {model_path}")
+# Define function to calculate area of a bounding box
+def area_calc(x1, y1, x2, y2):
+    length = abs(x1 - x2)
+    width = abs(y1 - y2)
+    return length * width
 
-try:
-    model = YOLO(model_path)
-except Exception as e:
-    raise RuntimeError(f"Failed to load model: {str(e)}")
+# Streamlit app
+st.title('Waste Detection with YOLO')
 
-# Function to calculate area of a bounding box
-def calculate_area(box):
-    x1, y1, x2, y2 = box[:4]
-    return abs(x2 - x1) * abs(y2 - y1)
+# File uploader for image and video
+uploaded_file = st.file_uploader("Choose an image or video...", type=['jpg', 'jpeg', 'png', 'mp4'])
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    if request.method == 'POST':
-        file = request.files.get('file')
-        if file:
-            try:
-                # Save the uploaded file
-                file_path = os.path.join('static', 'uploaded_image.jpg')
-                file.save(file_path)
+if uploaded_file is not None:
+    if uploaded_file.type in ['image/jpeg', 'image/png']:
+        # Process image
+        st.image(uploaded_file, caption='Uploaded Image', use_column_width=True)
+        image = Image.open(uploaded_file)
+        image = np.array(image)
+        r_img = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-                # Read image and convert to numpy array
-                image = Image.open(file_path)
-                image_np = np.array(image)
+        # Resize image
+        r_img = cv2.resize(r_img, (640, 640))
 
-                # Convert image to BGR for OpenCV
-                image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
-                resized_img = cv2.resize(image_bgr, (640, 640))
+        results = model(r_img)
+        area = 0
 
-                # Perform detection
-                results = model(resized_img)
+        # Draw bounding boxes and calculate areas
+        for result in results:
+            boxes = result.boxes
+            boxes_list = boxes.data.tolist()
+            for o in boxes_list:
+                x1, y1, x2, y2, score, class_id = o
+                pred_img = cv2.rectangle(r_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                x = area_calc(x1, y1, x2, y2)
+                area += x
 
-                total_area = 0
+        # Calculate percentage of waste detected
+        image_area = 640 * 640
+        percentage_waste = round((area / image_area) * 100)
+
+        st.image(cv2.cvtColor(pred_img, cv2.COLOR_BGR2RGB), caption='Processed Image with Detection')
+        st.write(f"Area of waste detected: {area} unit sq")
+        st.write(f"Area of the image: {image_area} unit sq")
+        st.write(f"The Percentage of Waste detected in the image is: {percentage_waste}%")
+
+    elif uploaded_file.type == 'video/mp4':
+        # Process video
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+        temp_file.write(uploaded_file.read())
+        temp_file.close()
+
+        cap = cv2.VideoCapture(temp_file.name)
+        stframe = st.empty()
+
+        total_area = 0
+        total_frames = 0
+
+        # Define processing interval and resize factor
+        frame_interval = 5  # Process every 5th frame
+        resize_factor = 0.5  # Resize frame to 50% of original size
+
+        frame_count = 0
+        start_time = time.time()
+
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            if frame_count % frame_interval == 0:
+                # Resize frame
+                height, width = frame.shape[:2]
+                new_size = (int(width * resize_factor), int(height * resize_factor))
+                resized_frame = cv2.resize(frame, new_size)
+
+                # Process frame
+                r_img = cv2.resize(resized_frame, (640, 640))
+                results = model(r_img)
+                area = 0
+
+                # Draw bounding boxes and calculate areas
                 for result in results:
                     boxes = result.boxes
-                    for box in boxes.data:
-                        x1, y1, x2, y2, score, class_id = box.tolist()
-                        total_area += calculate_area((x1, y1, x2, y2))
-                        cv2.rectangle(resized_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                    boxes_list = boxes.data.tolist()
+                    for o in boxes_list:
+                        x1, y1, x2, y2, score, class_id = o
+                        cv2.rectangle(r_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                        x = area_calc(x1, y1, x2, y2)
+                        area += x
 
-                # Calculate percentage of waste detected
-                image_area = 640 * 640
-                percentage_waste = round((total_area / image_area) * 100, 2)
+                total_area += area
+                total_frames += 1
 
-                # Save processed image
-                output_image_path = os.path.join('static', 'processed_image.jpg')
-                output_image = Image.fromarray(cv2.cvtColor(resized_img, cv2.COLOR_BGR2RGB))
-                output_image.save(output_image_path)
+                # Display results frame-by-frame
+                stframe.image(cv2.cvtColor(r_img, cv2.COLOR_BGR2RGB), caption='Processed Video Frame with Detection', use_column_width=True)
 
-                return render_template(
-                    'index.html',
-                    image_url=url_for('static', filename='processed_image.jpg'),
-                    total_area=total_area,
-                    percentage_waste=percentage_waste
-                )
-            except Exception as e:
-                return f"Error processing image: {str(e)}", 500
+            frame_count += 1
 
-    return render_template('index.html')
+        cap.release()
+        os.remove(temp_file.name)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+        if total_frames > 0:
+            image_area = 640 * 640
+            average_area = total_area / total_frames
+            percentage_waste = round((average_area / image_area) * 100)
+
+            st.write(f"Total Area of waste detected in video: {total_area} unit sq")
+            st.write(f"Area of the image frame: {image_area} unit sq")
