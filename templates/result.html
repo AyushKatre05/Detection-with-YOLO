@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detection Result</title>
+</head>
+<body>
+    <h1>Detection Result</h1>
+    <img src="{{ image_url }}" alt="Processed Image or Frame" style="max-width: 100%; height: auto;">
+    <p>Area of waste detected: {{ area }} unit sq</p>
+    <p>Area of the image: {{ image_area }} unit sq</p>
+    <p>The Percentage of Waste detected is: {{ percentage_waste }}%</p>
+    <a href="/">Upload another file</a>
+</body>
+</html>

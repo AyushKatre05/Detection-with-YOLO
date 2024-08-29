@@ -1,18 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Waste Detection</title>
-</head>
-<body>
-    <h1>Waste Detection with YOLO</h1>
-    <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data">
-        <input type="file" name="file">
-        <button type="submit">Upload Image</button>
-    </form>
-</body>
-</html>
 <!doctype html>
 <html lang="en">
 <head>
@@ -36,7 +21,22 @@
         <h2 class="mt-5">Processed Image</h2>
         <img src="{{ image_url }}" class="img-fluid" alt="Processed Image">
         <p>Total Area of Waste Detected: {{ total_area }} pixels</p>
-        <p>Percentage of Waste Detected: {{ percentage_waste }}%</p>
+        <p>Percentage of Waste Dete<!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Waste Detection with YOLO</title>
+            </head>
+            <body>
+                <h1>Upload an Image or Video for Waste Detection</h1>
+                <form action="/upload" method="post" enctype="multipart/form-data">
+                    <input type="file" name="file" accept="image/jpeg, image/png, video/mp4" required>
+                    <button type="submit">Upload</button>
+                </form>
+            </body>
+            </html>
+            cted: {{ percentage_waste }}%</p>
         {% endif %}
     </div>
 </body>
