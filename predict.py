@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, url_for
+import streamlit as st
 import cv2
 from ultralytics import YOLO
 import numpy as np
@@ -6,7 +6,6 @@ from PIL import Image
 import tempfile
 import os
 import logging
-import time
 
 # Suppress warnings and logging from the YOLO model
 logging.getLogger('ultralytics').setLevel(logging.ERROR)
@@ -15,37 +14,24 @@ logging.getLogger('ultralytics').setLevel(logging.ERROR)
 model_path = "C:/Users/ayush/OneDrive/Desktop/detection/runs/detect/train/weights/last.pt"
 model = YOLO(model_path)
 
-# Define Flask app
-app = Flask(__name__)
-
 # Define function to calculate area of a bounding box
 def area_calc(x1, y1, x2, y2):
     length = abs(x1 - x2)
     width = abs(y1 - y2)
     return length * width
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+# Streamlit app
+st.title("Waste Detection using YOLO Model")
+st.write("Upload an image or a video to detect waste and calculate the percentage of waste detected.")
 
-@app.route('/upload', methods=['POST'])
-def upload_file():
+# File uploader
+uploaded_file = st.file_uploader("Choose an image or video...", type=["jpg", "jpeg", "png", "mp4"])
+
+if uploaded_file is not None:
     try:
-        print("Upload route hit")
-        if 'file' not in request.files:
-            print("No file part")
-            return redirect(request.url)
-        
-        file = request.files['file']
-        if file.filename == '':
-            print("No selected file")
-            return redirect(request.url)
-        
-        print(f"Received file: {file.filename}")
-
-        if file.filename.endswith('.jpg') or file.filename.endswith('.jpeg') or file.filename.endswith('.png'):
-            # Process image
-            image = Image.open(file)
+        # Image processing
+        if uploaded_file.name.endswith(('jpg', 'jpeg', 'png')):
+            image = Image.open(uploaded_file)
             image = np.array(image)
             r_img = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
@@ -61,7 +47,7 @@ def upload_file():
                 boxes_list = boxes.data.tolist()
                 for o in boxes_list:
                     x1, y1, x2, y2, score, class_id = o
-                    pred_img = cv2.rectangle(r_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                    r_img = cv2.rectangle(r_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
                     x = area_calc(x1, y1, x2, y2)
                     area += x
 
@@ -69,16 +55,12 @@ def upload_file():
             image_area = 640 * 640
             percentage_waste = round((area / image_area) * 100)
 
-            if not os.path.exists('static'):
-                os.makedirs('static')
-            cv2.imwrite('static/processed_image.jpg', cv2.cvtColor(pred_img, cv2.COLOR_BGR2RGB))
+            st.image(r_img, caption=f"Processed Image - {percentage_waste}% Waste Detected", use_column_width=True)
 
-            return render_template('result.html', area=area, image_area=image_area, percentage_waste=percentage_waste, image_url='static/processed_image.jpg')
-
-        elif file.filename.endswith('.mp4'):
-            # Process video
+        # Video processing
+        elif uploaded_file.name.endswith('.mp4'):
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
-            temp_file.write(file.read())
+            temp_file.write(uploaded_file.read())
             temp_file.close()
 
             cap = cv2.VideoCapture(temp_file.name)
@@ -118,10 +100,6 @@ def upload_file():
                     total_area += area
                     total_frames += 1
 
-                    if not os.path.exists('static'):
-                        os.makedirs('static')
-                    cv2.imwrite('static/processed_frame.jpg', cv2.cvtColor(r_img, cv2.COLOR_BGR2RGB))
-
                 frame_count += 1
 
             cap.release()
@@ -132,13 +110,7 @@ def upload_file():
                 average_area = total_area / total_frames
                 percentage_waste = round((average_area / image_area) * 100)
 
-                return render_template('result.html', area=total_area, image_area=image_area, percentage_waste=percentage_waste, image_url='static/processed_frame.jpg')
-
-        return redirect(request.url)
+                st.image(r_img, caption=f"Processed Frame - {percentage_waste}% Waste Detected", use_column_width=True)
 
     except Exception as e:
-        print(f"Error: {e}")
-        return str(e)
-
-if __name__ == '__main__':
-    app.run(debug=True)
+        st.error(f"An error occurred: {e}")
