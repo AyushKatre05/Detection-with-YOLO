@@ -38,18 +38,14 @@ if uploaded_file is not None:
             # Resize image
             r_img = cv2.resize(r_img, (640, 640))
 
-            results = model(r_img)
+            results = model(r_img)[0]  # Getting the first result from the model
             area = 0
 
             # Draw bounding boxes and calculate areas
-            for result in results:
-                boxes = result.boxes
-                boxes_list = boxes.data.tolist()
-                for o in boxes_list:
-                    x1, y1, x2, y2, score, class_id = o
-                    r_img = cv2.rectangle(r_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-                    x = area_calc(x1, y1, x2, y2)
-                    area += x
+            for box in results.boxes.data.tolist():
+                x1, y1, x2, y2, score, class_id = box
+                r_img = cv2.rectangle(r_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                area += area_calc(x1, y1, x2, y2)
 
             # Calculate percentage of waste detected
             image_area = 640 * 640
@@ -84,18 +80,14 @@ if uploaded_file is not None:
 
                     # Process frame
                     r_img = cv2.resize(resized_frame, (640, 640))
-                    results = model(r_img)
+                    results = model(r_img)[0]  # Get the first result from the model
                     area = 0
 
                     # Draw bounding boxes and calculate areas
-                    for result in results:
-                        boxes = result.boxes
-                        boxes_list = boxes.data.tolist()
-                        for o in boxes_list:
-                            x1, y1, x2, y2, score, class_id = o
-                            cv2.rectangle(r_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-                            x = area_calc(x1, y1, x2, y2)
-                            area += x
+                    for box in results.boxes.data.tolist():
+                        x1, y1, x2, y2, score, class_id = box
+                        cv2.rectangle(r_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                        area += area_calc(x1, y1, x2, y2)
 
                     total_area += area
                     total_frames += 1
