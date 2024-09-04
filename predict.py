@@ -7,61 +7,51 @@ import tempfile
 import os
 import logging
 
-# Suppress warnings and logging from the YOLO model
 logging.getLogger('ultralytics').setLevel(logging.ERROR)
 
-# Define the model path
 model_path = "C:/Users/ayush/OneDrive/Desktop/detection/runs/detect/train/weights/last.pt"
 model = YOLO(model_path)
 
-# Define function to calculate area of a bounding box
 def area_calc(x1, y1, x2, y2):
     length = abs(x1 - x2)
     width = abs(y1 - y2)
     return length * width
 
-# Streamlit app
 st.title("Waste Detection using YOLO Model")
 st.write("Upload an image or a video to detect waste and calculate the percentage of waste detected.")
 
-# File uploader
 uploaded_file = st.file_uploader("Choose an image or video...", type=["jpg", "jpeg", "png", "mp4"])
 
 if uploaded_file is not None:
     try:
-        # Image processing
         if uploaded_file.name.endswith(('jpg', 'jpeg', 'png')):
             image = Image.open(uploaded_file)
             image = np.array(image)
             r_img = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-            # Resize image
             r_img = cv2.resize(r_img, (640, 640))
 
             results = model(r_img)[0]  # Getting the first result from the model
             area = 0
 
-            # Draw bounding boxes and calculate areas
             for box in results.boxes.data.tolist():
                 x1, y1, x2, y2, score, class_id = box
                 r_img = cv2.rectangle(r_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
                 area += area_calc(x1, y1, x2, y2)
 
-            # Calculate percentage of waste detected
             image_area = 640 * 640
             percentage_waste = round((area / image_area) * 100)
 
             st.image(r_img, caption=f"Processed Image - {percentage_waste}% Waste Detected", use_column_width=True)
 
-        # Video processing
         elif uploaded_file.name.endswith('.mp4'):
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
             temp_file.write(uploaded_file.read())
             temp_file.close()
 
             cap = cv2.VideoCapture(temp_file.name)
-            frame_interval = 5  # Process every 5th frame
-            resize_factor = 0.5  # Resize frame to 50% of original size
+            frame_interval = 5  
+            resize_factor = 0.5  
 
             total_area = 0
             total_frames = 0
@@ -73,17 +63,13 @@ if uploaded_file is not None:
                     break
 
                 if frame_count % frame_interval == 0:
-                    # Resize frame
                     height, width = frame.shape[:2]
                     new_size = (int(width * resize_factor), int(height * resize_factor))
                     resized_frame = cv2.resize(frame, new_size)
 
-                    # Process frame
                     r_img = cv2.resize(resized_frame, (640, 640))
-                    results = model(r_img)[0]  # Get the first result from the model
+                    results = model(r_img)[0]  
                     area = 0
-
-                    # Draw bounding boxes and calculate areas
                     for box in results.boxes.data.tolist():
                         x1, y1, x2, y2, score, class_id = box
                         cv2.rectangle(r_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
