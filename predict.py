@@ -17,7 +17,7 @@ def area_calc(x1, y1, x2, y2):
     width = abs(y1 - y2)
     return length * width
 
-st.title('Waste Detection in Image/Video')
+st.title('Waste Detection Model')
 
 option = st.selectbox('Select Input Type:', ('Image', 'Video'))
 
