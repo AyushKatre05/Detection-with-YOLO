@@ -9,7 +9,7 @@ import numpy as np
 
 logging.getLogger('ultralytics').setLevel(logging.ERROR)
 
-model_path = "C:/Users/ayush/OneDrive/Desktop/detection/runs/detect/train/weights/last.pt"
+model_path = "runs/detect/train/weights/last.pt"
 model = YOLO(model_path)
 
 def area_calc(x1, y1, x2, y2):
