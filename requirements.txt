@@ -5,3 +5,4 @@ pillow
 torch
 ultralytics
 gunicorn
+opencv-python-headless==4.5.5.64
