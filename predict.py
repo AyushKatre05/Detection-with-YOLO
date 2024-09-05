@@ -5,6 +5,7 @@ import tempfile
 import os
 import logging
 import time
+import numpy as np  
 
 # Suppress warnings and logging from the YOLO model
 logging.getLogger('ultralytics').setLevel(logging.ERROR)
@@ -20,74 +21,101 @@ def area_calc(x1, y1, x2, y2):
     return length * width
 
 # Streamlit app
-st.title('Waste Detection in Video')
+st.title('Waste Detection in Image/Video')
 
-# File uploader for video
-uploaded_file = st.file_uploader("Choose a video file...", type='mp4')
+# Allow user to select between image and video
+option = st.selectbox('Select Input Type:', ('Image', 'Video'))
 
-if uploaded_file is not None:
-    # Process video
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
-    temp_file.write(uploaded_file.read())
-    temp_file.close()
+# Common code for bounding box detection and processing
+def process_frame(frame):
+    # Resize frame
+    height, width = frame.shape[:2]
+    new_size = (int(width * 0.5), int(height * 0.5))
+    resized_frame = cv2.resize(frame, new_size)
 
-    cap = cv2.VideoCapture(temp_file.name)
-    stframe = st.empty()
+    # Resize to YOLO input size
+    r_img = cv2.resize(resized_frame, (640, 640))
 
-    total_area = 0
-    total_frames = 0
+    # Process frame using YOLO model
+    results = model(r_img)
+    area = 0
 
-    # Define processing interval and resize factor
-    frame_interval = 5  # Process every 5th frame
-    resize_factor = 0.5  # Resize frame to 50% of original size
+    # Extract bounding boxes and process them
+    if results and results[0].boxes is not None:
+        boxes_list = results[0].boxes.data.tolist()
+        for box in boxes_list:
+            x1, y1, x2, y2, score, class_id = box
+            # Draw bounding box
+            cv2.rectangle(r_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+            # Calculate area
+            area += area_calc(x1, y1, x2, y2)
 
-    frame_count = 0
-    start_time = time.time()
+    return r_img, area
 
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
+# If the user selects 'Image'
+if option == 'Image':
+    uploaded_image = st.file_uploader("Choose an image file...", type=['jpg', 'jpeg', 'png'])
 
-        if frame_count % frame_interval == 0:
-            # Resize frame
-            height, width = frame.shape[:2]
-            new_size = (int(width * resize_factor), int(height * resize_factor))
-            resized_frame = cv2.resize(frame, new_size)
+    if uploaded_image is not None:
+        # Read the uploaded image
+        file_bytes = np.asarray(bytearray(uploaded_image.read()), dtype=np.uint8)
+        img = cv2.imdecode(file_bytes, 1)
 
-            # Process frame
-            r_img = cv2.resize(resized_frame, (640, 640))
-            results = model(r_img)
-            area = 0
+        # Process the image
+        processed_img, total_area = process_frame(img)
 
-            # Extract bounding boxes and process them
-            if results and results[0].boxes is not None:
-                boxes_list = results[0].boxes.data.tolist()
+        # Display processed image with bounding boxes
+        st.image(cv2.cvtColor(processed_img, cv2.COLOR_BGR2RGB), caption='Processed Image with Detection', use_column_width=True)
 
-                for box in boxes_list:
-                    x1, y1, x2, y2, score, class_id = box
-                    # Draw bounding box
-                    cv2.rectangle(r_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-                    # Calculate area
-                    x = area_calc(x1, y1, x2, y2)
-                    area += x
-
-            total_area += area
-            total_frames += 1
-
-            # Display results frame-by-frame
-            stframe.image(cv2.cvtColor(r_img, cv2.COLOR_BGR2RGB), caption='Processed Video Frame with Detection', use_column_width=True)
-
-        frame_count += 1
-
-    cap.release()
-    os.remove(temp_file.name)
-
-    if total_frames > 0:
+        # Calculate and display the waste percentage
         image_area = 640 * 640
-        average_area = total_area / total_frames
-        percentage_waste = round((average_area / image_area) * 100)
-
-        st.write(f"Total Area of waste detected in video: {total_area} unit sq")
+        percentage_waste = round((total_area / image_area) * 100)
+        st.write(f"Total Area of waste detected: {total_area} unit sq")
         st.write(f"Area of the image frame: {image_area} unit sq")
-        st.write(f"The Percentage of Waste detected in the video is: {percentage_waste}%")
+        st.write(f"The Percentage of Waste detected in the image is: {percentage_waste}%")
+
+# If the user selects 'Video'
+elif option == 'Video':
+    uploaded_video = st.file_uploader("Choose a video file...", type='mp4')
+
+    if uploaded_video is not None:
+        # Process video
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+        temp_file.write(uploaded_video.read())
+        temp_file.close()
+
+        cap = cv2.VideoCapture(temp_file.name)
+        stframe = st.empty()
+
+        total_area = 0
+        total_frames = 0
+        frame_count = 0
+        frame_interval = 5  # Process every 5th frame
+
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            if frame_count % frame_interval == 0:
+                processed_frame, area = process_frame(frame)
+                total_area += area
+                total_frames += 1
+
+                # Display video frame with bounding boxes
+                stframe.image(cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB), caption='Processed Video Frame with Detection', use_column_width=True)
+
+            frame_count += 1
+
+        cap.release()
+        os.remove(temp_file.name)
+
+        # Calculate and display waste percentage for video
+        if total_frames > 0:
+            image_area = 640 * 640
+            average_area = total_area / total_frames
+            percentage_waste = round((average_area / image_area) * 100)
+
+            st.write(f"Total Area of waste detected in video: {total_area} unit sq")
+            st.write(f"Area of the image frame: {image_area} unit sq")
+            st.write(f"The Percentage of Waste detected in the video is: {percentage_waste}%")
