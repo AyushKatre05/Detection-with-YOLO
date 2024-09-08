@@ -1,43 +1,22 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Waste Detection with YOLO</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Files</title>
 </head>
 <body>
-    <div class="container mt-5">
-        <h1 class="mb-4">Waste Detection with YOLO</h1>
-        <form method="post" enctype="multipart/form-data">
-            <div class="form-group">
-                <label for="file">Choose an image file</label>
-                <input type="file" class="form-control-file" id="file" name="file" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Upload and Detect</button>
-        </form>
+    <h1>Upload Image or Video</h1>
+    <form action="/upload-image" method="post" enctype="multipart/form-data">
+        <label for="file">Upload Image:</label>
+        <input type="file" name="file" accept="image/*" required>
+        <button type="submit">Upload Image</button>
+    </form>
 
-        {% if image_url %}
-        <h2 class="mt-5">Processed Image</h2>
-        <img src="{{ image_url }}" class="img-fluid" alt="Processed Image">
-        <p>Total Area of Waste Detected: {{ total_area }} pixels</p>
-        <p>Percentage of Waste Dete<!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Waste Detection with YOLO</title>
-            </head>
-            <body>
-                <h1>Upload an Image or Video for Waste Detection</h1>
-                <form action="/upload" method="post" enctype="multipart/form-data">
-                    <input type="file" name="file" accept="image/jpeg, image/png, video/mp4" required>
-                    <button type="submit">Upload</button>
-                </form>
-            </body>
-            </html>
-            cted: {{ percentage_waste }}%</p>
-        {% endif %}
-    </div>
+    <form action="/upload-video" method="post" enctype="multipart/form-data">
+        <label for="file">Upload Video:</label>
+        <input type="file" name="file" accept="video/*" required>
+        <button type="submit">Upload Video</button>
+    </form>
 </body>
 </html>
