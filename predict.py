@@ -2,6 +2,7 @@
 
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
+from werkzeug.utils import safe_join
 import cv2
 import numpy as np
 from ultralytics import YOLO
@@ -13,7 +14,7 @@ import time
 app = Flask(__name__)
 CORS(app)
 
-model_path = "runs/detect/train/weights/last.pt"
+model_path = os.path.join(os.path.dirname(__file__), "runs/detect/train/weights/last.pt")
 model = YOLO(model_path)
 
 def area_calc(x1, y1, x2, y2):
@@ -148,7 +149,17 @@ def process_video():
 
 @app.route('/download_video/<filename>', methods=['GET'])
 def download_video(filename):
-    return send_file(f"/path/to/temp/{filename}", mimetype='video/mp4')
-
+    # Ensure the filename is safe by joining with the output directory securely
+    output_dir = os.path.join(os.path.dirname(__file__), 'output_videos')
+    video_path = safe_join(output_dir, filename)  # Use safe_join to prevent directory traversal attacks
+    
+    # Check if the file exists and return it
+    if os.path.exists(video_path):
+        try:
+            return send_file(video_path, mimetype='video/mp4', as_attachment=True)
+        except Exception as e:
+            return jsonify({'error': f'Failed to send file: {str(e)}'}), 500
+    else:
+        return jsonify({'error': 'Video not found'}), 404
 if __name__ == '__main__':
     app.run(debug=True)
