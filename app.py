@@ -12,7 +12,8 @@ import base64
 import time
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
+
 
 model_path = os.path.join(os.path.dirname(__file__), "runs/detect/train/weights/last.pt")
 model = YOLO(model_path)
@@ -41,6 +42,10 @@ def process_frame(frame):
             cv2.rectangle(r_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
     return r_img, area
 
+@app.route('/')
+def index():
+    return "Welcome to the YOLO video processing API. Use /process_image or /process_video to upload files."
+
 @app.route('/process_image', methods=['POST'])
 def process_image():
     if 'image' not in request.files:
@@ -65,6 +70,7 @@ def process_image():
     
     return jsonify(result)
 
+<<<<<<< HEAD
 @app.route('/process_video', methods=['POST'])
 def process_video():
     if 'video' not in request.files:
@@ -162,6 +168,8 @@ def download_video(filename):
     else:
         return jsonify({'error': 'Video not found'}), 404
 
+=======
+>>>>>>> 386a577aa7f4e3a9e0c47c04f0f81e962a456dcd
 if __name__ == '__main__':
     # Run the app on port 5000, regardless of environment variables
     app.run(host='0.0.0.0', port=5000)
