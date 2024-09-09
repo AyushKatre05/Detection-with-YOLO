@@ -161,5 +161,7 @@ def download_video(filename):
             return jsonify({'error': f'Failed to send file: {str(e)}'}), 500
     else:
         return jsonify({'error': 'Video not found'}), 404
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Run the app on port 5000, regardless of environment variables
+    app.run(host='0.0.0.0', port=5000)
