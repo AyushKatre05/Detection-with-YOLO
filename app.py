@@ -70,6 +70,10 @@ def process_image():
     
     return jsonify(result)
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 1722c075e26f947f9e1d0a24867728ab4c0be3dc
 @app.route('/process_video', methods=['POST'])
 def process_video():
     if 'video' not in request.files:
@@ -167,6 +171,11 @@ def download_video(filename):
     else:
         return jsonify({'error': 'Video not found'}), 404
 
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> 386a577aa7f4e3a9e0c47c04f0f81e962a456dcd
+>>>>>>> 1722c075e26f947f9e1d0a24867728ab4c0be3dc
 if __name__ == '__main__':
     # Run the app on port 5000, regardless of environment variables
     app.run(host='0.0.0.0', port=5000)
