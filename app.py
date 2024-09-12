@@ -12,6 +12,7 @@ logging.getLogger('ultralytics').setLevel(logging.ERROR)
 # Define the model path
 model_path = "runs/detect/train/weights/last.pt"
 model = YOLO(model_path)
+
 # Define function to calculate area of a bounding box
 def area_calc(x1, y1, x2, y2):
     length = abs(x1 - x2)
@@ -89,6 +90,11 @@ elif option == 'Video':
         total_frames = 0
         frame_count = 0
         frame_interval = 5  # Process every 5th frame
+        fps = cap.get(cv2.CAP_PROP_FPS)  # Get the frames per second of the original video
+        frame_duration = 1 / fps  # Calculate the duration of each frame
+
+        image_area = 640 * 640  # Fixed area for YOLO's 640x640 resized frames
+        total_waste_area = 0  # Total waste area across all frames processed
 
         while cap.isOpened():
             ret, frame = cap.read()
@@ -96,24 +102,25 @@ elif option == 'Video':
                 break
 
             if frame_count % frame_interval == 0:
-                processed_frame, area = process_frame(frame)
-                total_area += area
+                processed_frame, waste_area = process_frame(frame)
+                total_waste_area += waste_area
                 total_frames += 1
 
                 # Display video frame with bounding boxes
                 stframe.image(cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB), caption='Processed Video Frame with Detection', use_column_width=True)
 
             frame_count += 1
+            time.sleep(frame_duration)  # Sleep to maintain the original frame rate
 
         cap.release()
         os.remove(temp_file.name)
 
         # Calculate and display waste percentage for video
         if total_frames > 0:
-            image_area = 640 * 640
-            average_area = total_area / total_frames
-            percentage_waste = round((average_area / image_area) * 100)
+            average_waste_area = total_waste_area / total_frames
+            percentage_waste = round((average_waste_area / image_area) * 100, 2)
 
-            st.write(f"Total Area of waste detected in video: {total_area} unit sq")
-            st.write(f"Area of the image frame: {image_area} unit sq")
+            st.write(f"Total Waste Area detected in video: {total_waste_area} unit sq")
+            st.write(f"Area of a single video frame: {image_area} unit sq")
+            st.write(f"Average Waste Area per frame: {average_waste_area} unit sq")
             st.write(f"The Percentage of Waste detected in the video is: {percentage_waste}%")
