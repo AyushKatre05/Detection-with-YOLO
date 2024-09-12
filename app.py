@@ -10,7 +10,7 @@ import numpy as np
 # Suppress warnings and logging from the YOLO model
 logging.getLogger('ultralytics').setLevel(logging.ERROR)
 # Define the model path
-model_path = "C:/Users/ayush/OneDrive/Desktop/detection/runs/detect/train/weights/last.pt"
+model_path = "runs/detect/train/weights/last.pt"
 model = YOLO(model_path)
 # Define function to calculate area of a bounding box
 def area_calc(x1, y1, x2, y2):
